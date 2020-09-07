@@ -1,0 +1,24 @@
+diff --git a/wscript b/wscript
+index 11e91f8..a335113 100644
+--- a/wscript
++++ b/wscript
+@@ -1,3 +1,4 @@
++#!/usr/bin/env python3
+ # -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
+ 
+ VERSION='0.1'
+@@ -36,7 +37,7 @@ def configure(conf):
+                'default-compiler-flags',
+                'boost', 'ns3'])
+ 
+-    if not os.environ.has_key('PKG_CONFIG_PATH'):
++    if 'PKG_CONFIG_PATH' in os.environ:
+         os.environ['PKG_CONFIG_PATH'] = ':'.join([
+             '/usr/local/lib/pkgconfig',
+             '/opt/local/lib/pkgconfig'])
+@@ -111,4 +112,4 @@ def shutdown (ctx):
+         if Options.options.time:
+             argv = ["time"] + argv
+ 
+-        return subprocess.call (argv)
++        return subprocess.call (argv, env=os.environ.copy())
