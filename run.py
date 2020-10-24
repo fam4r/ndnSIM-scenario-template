@@ -1,11 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
 
 from subprocess import call
 from sys import argv
 import os
 import subprocess
-import workerpool
+import concurrent.futures
 import multiprocessing
 import argparse
 
@@ -29,37 +29,38 @@ parser.add_argument('-g', '--no-graph', dest="graph", action='store_false', defa
 args = parser.parse_args()
 
 if not args.list and len(args.scenarios)==0:
-    print "ERROR: at least one scenario need to be specified"
+    print("ERROR: at least one scenario need to be specified")
     parser.print_help()
-    exit (1)
+    exit(1)
 
 if args.list:
-    print "Available scenarios: "
+    print("Available scenarios: ")
 else:
     if args.simulate:
-        print "Simulating the following scenarios: " + ",".join (args.scenarios)
+        print("Simulating the following scenarios: " + ",".join(args.scenarios))
 
     if args.graph:
-        print "Building graphs for the following scenarios: " + ",".join (args.scenarios)
+        print("Building graphs for the following scenarios: " + ",".join(args.scenarios))
 
 ######################################################################
 ######################################################################
 ######################################################################
 
-class SimulationJob (workerpool.Job):
+class SimulationJob:
     "Job to simulate things"
-    def __init__ (self, cmdline):
+    def __init__(self, cmdline):
         self.cmdline = cmdline
-    def run (self):
-        print (" ".join (self.cmdline))
-        subprocess.call (self.cmdline)
+    def run(self):
+        print(" ".join(self.cmdline))
+        subprocess.run(self.cmdline, shell=True)
 
-pool = workerpool.WorkerPool(size = multiprocessing.cpu_count())
+
+pool = concurrent.futures.ProcessPoolExecutor()
 
 class Processor:
-    def run (self):
+    def run(self):
         if args.list:
-            print "    " + self.name
+            print("    " + self.name)
             return
 
         if "all" not in args.scenarios and self.name not in args.scenarios:
@@ -69,34 +70,32 @@ class Processor:
             pass
         else:
             if args.simulate:
-                self.simulate ()
-                pool.join ()
-                self.postprocess ()
+                self.simulate()
+                self.postprocess()
             if args.graph:
-                self.graph ()
+                self.graph()
 
-    def graph (self):
-        subprocess.call ("./graphs/%s.R" % self.name, shell=True)
+    def graph(self):
+        subprocess.call("./graphs/%s.R" % self.name, shell=True)
 
-class Scenario (Processor):
-    def __init__ (self, name):
+class Scenario(Processor):
+    def __init__(self, name):
         self.name = name
         # other initialization, if any
 
-    def simulate (self):
+    def simulate(self):
         cmdline = ["./build/SCENARIO_TO_RUN"]
-        job = SimulationJob (cmdline)
-        pool.put (job)
+        job = SimulationJob(cmdline)
+        pool.submit(job.run)
 
-    def postprocess (self):
+    def postprocess(self):
         # any postprocessing, if any
         pass
 
 try:
     # Simulation, processing, and graph building
-    fig = Scenario (name="NAME_TO_CONFIGURE")
-    fig.run ()
+    fig = Scenario(name="NAME_TO_CONFIGURE")
+    fig.run()
 
 finally:
-    pool.join ()
-    pool.shutdown ()
+    pool.shutdown()
